@@ -6,29 +6,58 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
-      - name: Setup
+      - name: Create Android Structure
         run: |
+          # Klasörleri oluştur
           mkdir -p android/app/src/main/kotlin/com/example/iktibas
+          
+          # settings.gradle
           echo "include ':app'" > android/settings.gradle
-          echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:7.3.0'; classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22' } }" > android/build.gradle
           
-          # Hata Veren Kısım Düzeltildi (v2 embedding eklendi)
-          echo "apply plugin: 'com.android.application'; apply plugin: 'kotlin-android'; apply from: \"\$flutterRoot/packages/flutter_tools/gradle/flutter.gradle\"; android { namespace 'com.example.iktibas'; compileSdkVersion 33; defaultConfig { applicationId 'com.example.iktibas'; minSdkVersion 21; targetSdkVersion 33; versionCode 1; versionName '1.0' } }" > android/app/build.gradle
-          
-          # MainActivity - v2 Embedding Uyumlu
+          # build.gradle (Ana)
+          cat <<EOF > android/build.gradle
+          buildscript {
+              ext.kotlin_version = '1.8.22'
+              repositories { google(); mavenCentral() }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:7.3.0'
+                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
+              }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+
+          # build.gradle (App) - Hata burada giderildi
+          cat <<EOF > android/app/build.gradle
+          apply plugin: 'com.android.application'
+          apply plugin: 'kotlin-android'
+          apply from: "\$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+          android {
+              namespace "com.example.iktibas"
+              compileSdkVersion 33
+              defaultConfig {
+                  applicationId "com.example.iktibas"
+                  minSdkVersion 21
+                  targetSdkVersion 33
+                  versionCode 1
+                  versionName "1.0"
+              }
+          }
+          EOF
+
+          # MainActivity
           cat <<EOF > android/app/src/main/kotlin/com/example/iktibas/MainActivity.kt
           package com.example.iktibas
           import io.flutter.embedding.android.FlutterActivity
           class MainActivity: FlutterActivity()
           EOF
-          
-          # AndroidManifest - v2 Embedding Uyumlu Meta Verisi Eklendi
+
+          # AndroidManifest
           mkdir -p android/app/src/main
           cat <<EOF > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.iktibas">
               <application android:label="iktibas" android:icon="@mipmap/ic_launcher">
-                  <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:windowSoftInputMode="adjustResize">
-                      <meta-data android:name="io.flutter.embedding.android.NormalTheme" android:resource="@android:style/Theme.Black.NoTitleBar"/>
+                  <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
@@ -38,7 +67,10 @@ jobs:
               </application>
           </manifest>
           EOF
+
       - run: flutter pub get
-      - run: flutter build apk --release
+      - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
-        with: { name: iktibas-apk, path: build/app/outputs/flutter-apk/*.apk }
+        with:
+          name: iktibas-apk
+          path: build/app/outputs/flutter-apk/*.apk
