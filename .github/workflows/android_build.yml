@@ -1,0 +1,20 @@
+name: Build APK
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+      - name: Setup
+        run: |
+          mkdir -p android/app/src/main/kotlin/com/example/iktibas
+          echo "include ':app'" > android/settings.gradle
+          echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:7.3.0'; classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22' } }" > android/build.gradle
+          echo "apply plugin: 'com.android.application'; apply plugin: 'kotlin-android'; apply from: \"\$flutterRoot/packages/flutter_tools/gradle/flutter.gradle\"; android { namespace 'com.example.iktibas'; compileSdkVersion 33; defaultConfig { applicationId 'com.example.iktibas'; minSdkVersion 21; targetSdkVersion 33; versionCode 1; versionName '1.0' } }" > android/app/build.gradle
+          echo "package com.example.iktibas; import io.flutter.embedding.android.FlutterActivity; class MainActivity: FlutterActivity()" > android/app/src/main/kotlin/com/example/iktibas/MainActivity.kt
+          mkdir -p android/app/src/main; echo "<manifest xmlns:android='http://schemas.android.com/apk/res/android' package='com.example.iktibas'><application android:label='iktibas'><activity android:name='.MainActivity' android:exported='true'><intent-filter><action android:name='android.intent.action.MAIN'/><category android:name='android.intent.category.LAUNCHER'/></intent-filter></activity></application></manifest>" > android/app/src/main/AndroidManifest.xml
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with: { name: iktibas-apk, path: build/app/outputs/flutter-apk/*.apk }
