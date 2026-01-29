@@ -1,0 +1,6 @@
+name: iktibas
+environment: { sdk: '>=3.0.0 <4.0.0' }
+dependencies:
+  flutter: { sdk: flutter }
+  share_plus: ^7.1.0
+flutter: { uses-material-design: true }
