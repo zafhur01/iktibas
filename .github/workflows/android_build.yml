@@ -6,9 +6,72 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
-      - run: flutter pub get
-      - run: flutter build apk --release
-      - uses: actions/upload-artifact@v4
+        with:
+          channel: 'stable'
+          flutter-version: '3.13.0' # Versiyonu sabitledik
+
+      - name: Create All Android Files at Once
+        run: |
+          # Önce tüm eski kalıntıları silelim ki temiz olsun
+          rm -rf android
+          
+          # Tüm klasör yapısını tek seferde kuralım
+          mkdir -p android/app/src/main/kotlin/com/example/iktibas
+          
+          # Ayar dosyalarını hatasız oluşturalım
+          echo "include ':app'" > android/settings.gradle
+          
+          cat <<EOF > android/build.gradle
+          buildscript {
+              ext.kotlin_version = '1.8.22'
+              repositories { google(); mavenCentral() }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:7.3.0'
+                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
+              }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+
+          cat <<EOF > android/app/build.gradle
+          apply plugin: 'com.android.application'
+          apply plugin: 'kotlin-android'
+          apply from: "\$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+          android {
+              namespace "com.example.iktibas"
+              compileSdkVersion 33
+              defaultConfig {
+                  applicationId "com.example.iktibas"
+                  minSdkVersion 21
+                  targetSdkVersion 33
+                  versionCode 1
+                  versionName "1.0"
+              }
+          }
+          EOF
+
+          cat <<EOF > android/app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.iktibas">
+              <application android:label="iktibas" android:icon="@mipmap/ic_launcher">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          echo "package com.example.iktibas; import io.flutter.embedding.android.FlutterActivity; class MainActivity: FlutterActivity()" > android/app/src/main/kotlin/com/example/iktibas/MainActivity.kt
+
+      - name: Build
+        run: |
+          flutter pub get
+          flutter build apk --release --split-per-abi
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
         with:
           name: iktibas-apk
           path: build/app/outputs/flutter-apk/*.apk
